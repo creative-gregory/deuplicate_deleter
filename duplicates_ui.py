@@ -117,7 +117,7 @@ class DuplicatesGUI(tk.Frame):
 
         self.progress_bar.stop()
         self.enable_scrollbar()
-        self.progress_label.config(text = self.base_progress_text + "Duplicates Evaluated and Table Population Completed")
+        self.progress_label.config(text = self.base_progress_text + "Duplicate Evaluation and Table Population Completed")
       else:
         messagebox.showinfo("Information","There are no duplicate files to remove.")
 
