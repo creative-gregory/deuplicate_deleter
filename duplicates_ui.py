@@ -26,12 +26,15 @@ class DuplicatesGUI(tk.Frame):
     self.tree_scrollbar = tk.Scrollbar(self.tree_view_frame)
     self.tree_view = ttk.Treeview(self.tree_view_frame, yscrollcommand=self.tree_scrollbar.set, selectmode="none")
 
+    self.base_progress_text = "Current Step: "
+    self.progress_label = ttk.Label(text="")
+
     self.draw_widgets()
 
     self.path_list       = list()
     self.duplicates_dict = dict()
 
-  def get_entry_data(self):
+  def confirm_entry_text(self):
     entry_path_list = list()
     
     for path in self.path_list:
@@ -52,7 +55,6 @@ class DuplicatesGUI(tk.Frame):
         del self.duplicates_dict[k]
 
   def populate_treeview(self):
-    print(len(self.duplicates_dict))
     parent_id = 0
 
     for file_name, duplicate_data in self.duplicates_dict.items():
@@ -65,53 +67,71 @@ class DuplicatesGUI(tk.Frame):
         self.tree_view.insert(parent=rf"{parent_id}", index="end", iid=rf"{parent_id}.{child_id}", values=("", path, size), open=True)
         child_id += 1
 
-        date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(rf"{date_time} - Populating: {path}")
+        # date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # print(rf"{date_time} - Populating: {path}")
 
       parent_id += 1
 
+  def disable_scrollbar(self):
+    self.tree_scrollbar.pack_forget()
 
+  def enable_scrollbar(self):
+    self.tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
   def scan(self, path_text):
+    self.progress_label.config(text = self.base_progress_text + "Beginning Scan Process")
+
     self.clear_treeview()
-    self.progress_bar.config(mode='indeterminate')
-    self.progress_bar.start(25)
+    self.disable_scrollbar()
 
     self.path_list = str(path_text.get('1.0', 'end')).strip().split("\n")
    
     if self.path_list and '' not in self.path_list:  # removes single empty string/char index from tk.Text().get()
-      self.paths_to_scan = self.get_entry_data()
+      self.paths_to_scan = self.confirm_entry_text()
+      
+      self.progress_bar.config(mode='indeterminate')
+      self.progress_bar.start(25)
+
+      self.progress_label.config(text = self.base_progress_text + "Searching for Duplicates")
       self.duplicates_dict = d.exec_scan(path_list=self.paths_to_scan)
       
       date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
       print(rf"{date_time} - Scan Completed")
 
       if self.duplicates_dict:
+        self.progress_label.config(text = self.base_progress_text + "Evaluating Duplicates Found")
+        date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(rf"{date_time} - Evaluation Beginning")
+      
         self.evalute_data()
         date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(rf"{date_time} - Evaluation Completed")
 
         date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(rf"{date_time} - TreeView Being Populated")
+        print(rf"{date_time} - TreeView Population Beginning")
 
         self.populate_treeview()
-        # self.tree_view.after(500, self.populate_treeview(), self.tree_view)
         date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(rf"{date_time} - TreeView Populated")
+        print(rf"{date_time} - TreeView Population Completed")
 
+
+        self.progress_bar.stop()
+        self.enable_scrollbar()
       else:
         messagebox.showinfo("Information","There are no duplicate files to remove.")
 
     else:
       messagebox.showwarning("Attention - Path Error", message=rf"No paths given." + "\nPress OK to Continue.")
 
-    self.progress_bar.stop()
+    
 
   def remove_from_treeview(self, treeview_index):
     file_path, size = self.tree_view.item(treeview_index)['values'][1], self.tree_view.item(treeview_index)['values'][2]
     self.tree_view.item(treeview_index, value=("" , rf"Deleted: {file_path}", "-"))
 
   def remove_selected_from_tree(self):
+    self.progress_label.config(text = self.base_progress_text + "Removing Selected Duplicates")
+
     self.progress_bar.config(mode='determinate')
     n, max_selected = 1, len(self.tree_view.selection()) + 1
     amount_deleted = 0.0
@@ -122,7 +142,7 @@ class DuplicatesGUI(tk.Frame):
       if file_path:
         if messagebox.askyesno("Remove Duplicate","Are you sure you want to remove the file:\n" + rf"{file_path}?"):
           send2trash(file_path)
-          # self.update_progress(n=n, max_selected=max_selected)
+          self.update_progress(n=n, max_selected=max_selected)
           self.remove_from_treeview(treeview_index=treeview_index)
           amount_deleted += float(size)
           n += 1
@@ -155,6 +175,9 @@ class DuplicatesGUI(tk.Frame):
 
   def draw_widgets(self):
     print("Drawing Widgets")
+    
+    self.progress_label.update()
+    self.progress_label.place(x=250, y=350)
 
     self.path_label = ttk.Label(text="Directories to Search:" )
     self.path_label.update()
@@ -180,22 +203,16 @@ class DuplicatesGUI(tk.Frame):
     # Treeview Frame Setup
     self.tree_height = 300
     self.tree_width = 750
-
     self.tree_view_frame.place(x=1, y=1, width=self.tree_width, height=self.tree_height)
-
-    # Tree View Scrollbar
-    
-    self.tree_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     # Treeview
     self.tree_view.place(x=1, y=1, width=self.tree_width-20, height=self.tree_height)
     self.tree_view.bind("<ButtonRelease-1>", lambda tree_view: self.treeview_selection(tree_view=self.tree_view))
-
     self.tree_scrollbar.config(command=self.tree_view.yview)
 
+    # Create Columns
     self.tree_view['columns'] = ("name", "path", "size")
 
-    # Create Columns
     self.tree_view.column("#0", width=20, minwidth=25)
     self.tree_view.column("name", anchor=tk.W, width=125)
     self.tree_view.column("path", anchor=tk.W, width=400)
@@ -206,10 +223,6 @@ class DuplicatesGUI(tk.Frame):
     self.tree_view.heading("name", text="File Name", anchor=tk.CENTER)
     self.tree_view.heading("path", text="File Path", anchor=tk.CENTER)
     self.tree_view.heading("size", text="File Size (MB)", anchor=tk.CENTER)
-
-    # self.populate_treeview(tree_view=self.tree_view)
-
-
 
 if __name__ == "__main__":
   root = tk.Tk()
