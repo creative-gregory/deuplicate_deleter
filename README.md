@@ -12,6 +12,7 @@ As someone that edits videos in my free time, managing used footage and cache fi
 - TKinter UI Creation
 - TKinter UI Structuring
 - TKinter UI Coupling
+- Handling UI Event Asynchronous via Background Threads
 
 
 ## Technologies Used
